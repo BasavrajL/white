@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Whiteboard with Eraser and Color</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f4f4f4;
+      }
+      canvas {
+        border: 1px solid black;
+      }
+      .controls {
+        margin-bottom: 10px;
+      }
+      .controls button,
+      .controls input {
+        margin-right: 10px;
+        padding: 10px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Drawing Controls (Color Picker, Eraser, and Clear Board) -->
+    <div class="controls">
+      <label for="colorPicker">Pick a color:</label>
+      <input type="color" id="colorPicker" value="#000000" />
+      <!-- Color Picker -->
+      <button id="eraser">Eraser</button>
+      <!-- Eraser Button -->
+      <button id="clear">Clear Board</button>
+      <!-- Clear Board Button -->
+    </div>
+
+    <!-- Whiteboard Canvas -->
+    <canvas id="whiteboard" width="800" height="600"></canvas>
+
+    <!-- Socket.IO Script -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const canvas = document.getElementById("whiteboard");
+      const ctx = canvas.getContext("2d");
+      const socket = io();
+
+      let drawing = false;
+      let isEraser = false;
+      let color = document.getElementById("colorPicker").value; // Set initial color to black
+
+      // Set up initial brush settings
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+
+      // Listen for color picker changes
+      document
+        .getElementById("colorPicker")
+        .addEventListener("input", function (e) {
+          color = e.target.value;
+          isEraser = false; // Disable eraser when color is picked
+        });
+
+      // Handle eraser button click
+      document.getElementById("eraser").addEventListener("click", () => {
+        isEraser = true;
+      });
+
+      // Clear board functionality
+      document.getElementById("clear").addEventListener("click", () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        socket.emit("clearBoard"); // Emit clear event to server
+      });
+
+      // Start drawing
+      function startDrawing(e) {
+        drawing = true;
+        draw(e);
+      }
+
+      // Stop drawing
+      function stopDrawing() {
+        drawing = false;
+        ctx.beginPath();
+      }
+
+      // Drawing on the canvas
+      function draw(e) {
+        if (!drawing) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        ctx.lineWidth = 5;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = isEraser ? "#ffffff" : color; // Use white for eraser
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+
+        // Emit the drawing event to the server
+        socket.emit("drawing", {
+          x,
+          y,
+          color: ctx.strokeStyle,
+          eraser: isEraser,
+        });
+      }
+
+      // Event listeners for mouse actions
+      canvas.addEventListener("mousedown", startDrawing);
+      canvas.addEventListener("mouseup", stopDrawing);
+      canvas.addEventListener("mousemove", draw);
+
+      // Listen for drawing data from other users
+      socket.on("drawing", (data) => {
+        const { x, y, color, eraser } = data;
+        ctx.lineWidth = 5;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = eraser ? "#ffffff" : color;
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      });
+
+      // Listen for the clear board event
+      socket.on("clearBoard", () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
+    </script>
+  </body>
+</html>
