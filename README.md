@@ -17,5 +17,5 @@ This is a simple real-time collaborative whiteboard application built using **No
 - **Socket.io**: Library for enabling real-time, bidirectional communication between clients and server.
 - **HTML5 Canvas**: Used for drawing the whiteboard on the browser.
 
-
+this is the summary of project
 
